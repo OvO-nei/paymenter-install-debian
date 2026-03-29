@@ -337,6 +337,10 @@ EOF
 create_admin_user() {
     log "Creating the initial Paymenter admin user..."
     cd "${PAYMENTER_DIR}"
+    if [ "$(php artisan tinker --execute="echo \\App\\Models\\User::where('email', '${ADMIN_EMAIL}')->exists() ? 'yes' : 'no';" 2>/dev/null)" = "yes" ]; then
+        log "An admin user with email ${ADMIN_EMAIL} already exists, skipping creation."
+        return
+    fi
     php artisan app:user:create "${ADMIN_FIRST_NAME}" "${ADMIN_LAST_NAME}" "${ADMIN_EMAIL}" "${ADMIN_PASSWORD}" 1
 }
 
