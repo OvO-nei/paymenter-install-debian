@@ -64,13 +64,13 @@ prompt_nonempty() {
     while [ -z "${value}" ]; do
         if [ "${secret}" = "true" ]; then
             if ! read -r -s -p "${prompt_text}" value < "${prompt_stream}"; then
-                echo
+                printf '\n' > /dev/tty
                 fail "Input cancelled while reading: ${prompt_text}"
             fi
-            echo
+            printf '\n' > /dev/tty
         else
             if ! read -r -p "${prompt_text}" value < "${prompt_stream}"; then
-                echo
+                printf '\n' > /dev/tty
                 fail "Input cancelled while reading: ${prompt_text}"
             fi
         fi
@@ -85,14 +85,32 @@ set_env_value() {
     local key="$1"
     local value="$2"
     local env_file="$3"
-    local escaped_value
+    local tmp_file
 
-    escaped_value="$(printf '%s' "${value}" | sed 's/[\/&]/\\&/g')"
-    if grep -q "^${key}=" "${env_file}"; then
-        sed -i "s/^${key}=.*/${key}=${escaped_value}/" "${env_file}"
-    else
-        echo "${key}=${value}" >> "${env_file}"
-    fi
+    tmp_file="$(mktemp)"
+    awk -v key="${key}" -v value="${value}" '
+        BEGIN { updated = 0 }
+        index($0, key "=") == 1 {
+            print key "=" value
+            updated = 1
+            next
+        }
+        { print }
+        END {
+            if (!updated) {
+                print key "=" value
+            }
+        }
+    ' "${env_file}" > "${tmp_file}"
+    mv "${tmp_file}" "${env_file}"
+}
+
+mysql_escape() {
+    local value="$1"
+
+    value="${value//\\/\\\\}"
+    value="${value//\'/\'\'}"
+    printf '%s' "${value}"
 }
 
 configure_php_repo() {
@@ -168,10 +186,13 @@ prepare_services() {
 
 setup_database() {
     log "Creating Paymenter database and database user..."
+    local escaped_db_password
+
+    escaped_db_password="$(mysql_escape "${DB_PASSWORD}")"
     mysql <<MYSQL
 CREATE DATABASE IF NOT EXISTS \`${PAYMENTER_DB}\`;
-CREATE USER IF NOT EXISTS '${PAYMENTER_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${DB_PASSWORD}';
-ALTER USER '${PAYMENTER_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${DB_PASSWORD}';
+CREATE USER IF NOT EXISTS '${PAYMENTER_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${escaped_db_password}';
+ALTER USER '${PAYMENTER_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${escaped_db_password}';
 GRANT ALL PRIVILEGES ON \`${PAYMENTER_DB}\`.* TO '${PAYMENTER_DB_USER}'@'127.0.0.1';
 FLUSH PRIVILEGES;
 MYSQL
