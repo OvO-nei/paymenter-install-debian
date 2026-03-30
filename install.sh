@@ -315,13 +315,24 @@ ensure_app_key() {
     fi
 
     grep -q '^APP_KEY=base64:' .env || fail "APP_KEY is still missing from .env after key generation."
-    php artisan optimize:clear
 }
 
 apply_permissions() {
     log "Applying file permissions..."
     chown -R www-data:www-data "${PAYMENTER_DIR}"
-    chmod -R 750 "${PAYMENTER_DIR}/storage" "${PAYMENTER_DIR}/bootstrap/cache"
+    chmod -R 775 "${PAYMENTER_DIR}/storage" "${PAYMENTER_DIR}/bootstrap/cache"
+}
+
+finalize_runtime() {
+    log "Finalizing application runtime..."
+    cd "${PAYMENTER_DIR}"
+    php artisan optimize:clear
+    php artisan config:clear
+    php artisan cache:clear
+    chown -R www-data:www-data "${PAYMENTER_DIR}"
+    chmod -R 775 "${PAYMENTER_DIR}/storage" "${PAYMENTER_DIR}/bootstrap/cache"
+    systemctl restart "${PHP_FPM_SERVICE}"
+    systemctl restart nginx
 }
 
 configure_nginx() {
@@ -460,6 +471,7 @@ apply_permissions
 configure_nginx
 configure_ssl
 ensure_app_key
+finalize_runtime
 configure_cron
 configure_queue_worker
 create_admin_user
