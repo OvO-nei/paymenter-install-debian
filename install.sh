@@ -159,6 +159,8 @@ install_packages() {
         cron \
         git \
         nginx \
+        nodejs \
+        npm \
         redis-server \
         tar \
         unzip \
@@ -234,6 +236,23 @@ configure_environment() {
 install_paymenter_dependencies() {
     log "Installing PHP dependencies..."
     COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-interaction --working-dir="${PAYMENTER_DIR}"
+}
+
+build_paymenter_assets() {
+    cd "${PAYMENTER_DIR}"
+
+    if [ ! -f package.json ]; then
+        log "No frontend package.json found, skipping asset build."
+        return
+    fi
+
+    log "Installing frontend dependencies and building assets..."
+    if [ -f package-lock.json ]; then
+        npm ci
+    else
+        npm install
+    fi
+    npm run build
 }
 
 run_artisan_setup() {
@@ -381,6 +400,7 @@ setup_database
 download_paymenter
 configure_environment
 install_paymenter_dependencies
+build_paymenter_assets
 run_artisan_setup
 apply_permissions
 configure_nginx
