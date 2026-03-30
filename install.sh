@@ -33,6 +33,7 @@ require_os_release() {
     . /etc/os-release
     OS_ID="${ID:-}"
     OS_CODENAME="${VERSION_CODENAME:-}"
+    OS_VERSION_ID="${VERSION_ID:-}"
 
     [[ "${OS_ID}" == "debian" || "${OS_ID}" == "ubuntu" ]] || fail "This script supports Debian and Ubuntu only."
     [ -n "${OS_CODENAME}" ] || fail "Could not detect the distribution codename."
@@ -135,8 +136,18 @@ configure_php_repo() {
 }
 
 configure_mariadb_repo() {
+    local mariadb_version="${MARIADB_VERSION}"
+
+    if [ "${OS_ID}" = "debian" ]; then
+        case "${OS_CODENAME}" in
+            trixie|forky)
+                mariadb_version="mariadb-11.4"
+                ;;
+        esac
+    fi
+
     log "Configuring MariaDB repository..."
-    curl -fsSL https://downloads.mariadb.com/MariaDB/mariadb_repo_setup | bash -s -- --mariadb-server-version="${MARIADB_VERSION}"
+    curl -fsSL https://downloads.mariadb.com/MariaDB/mariadb_repo_setup | bash -s -- --mariadb-server-version="${mariadb_version}"
 }
 
 install_base_packages() {
