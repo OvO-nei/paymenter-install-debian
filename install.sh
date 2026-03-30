@@ -11,7 +11,7 @@ NGINX_SITE_PATH="/etc/nginx/sites-available/paymenter.conf"
 NGINX_SITE_LINK="/etc/nginx/sites-enabled/paymenter.conf"
 PHP_FPM_SERVICE="php${PHP_VERSION}-fpm"
 PHP_FPM_SOCK="/run/php/php${PHP_VERSION}-fpm.sock"
-MARIADB_VERSION="mariadb-10.11"
+MARIADB_VERSION="10.11"
 
 log() {
     printf '[%s] %s\n' "$(date '+%F %T')" "$*"
@@ -137,17 +137,22 @@ configure_php_repo() {
 
 configure_mariadb_repo() {
     local mariadb_version="${MARIADB_VERSION}"
+    local repo_setup_url="https://r.mariadb.com/downloads/mariadb_repo_setup"
+    local -a repo_args=()
 
     if [ "${OS_ID}" = "debian" ]; then
         case "${OS_CODENAME}" in
             trixie|forky)
-                mariadb_version="mariadb-11.4"
+                mariadb_version="11.4"
                 ;;
         esac
     fi
 
+    repo_args+=(--mariadb-server-version="${mariadb_version}")
+    repo_args+=(--os-type="${OS_ID}" --os-version="${OS_CODENAME}")
+
     log "Configuring MariaDB repository..."
-    curl -fsSL https://downloads.mariadb.com/MariaDB/mariadb_repo_setup | bash -s -- --mariadb-server-version="${mariadb_version}"
+    curl -fsSL "${repo_setup_url}" | bash -s -- "${repo_args[@]}"
 }
 
 install_base_packages() {
