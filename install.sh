@@ -306,6 +306,18 @@ run_artisan_setup() {
     php artisan app:settings:change app_url "${APP_URL}"
 }
 
+ensure_app_key() {
+    log "Ensuring Laravel APP_KEY is present..."
+    cd "${PAYMENTER_DIR}"
+
+    if ! grep -q '^APP_KEY=base64:' .env 2>/dev/null; then
+        php artisan key:generate --force
+    fi
+
+    grep -q '^APP_KEY=base64:' .env || fail "APP_KEY is still missing from .env after key generation."
+    php artisan optimize:clear
+}
+
 apply_permissions() {
     log "Applying file permissions..."
     chown -R www-data:www-data "${PAYMENTER_DIR}"
@@ -447,6 +459,7 @@ run_artisan_setup
 apply_permissions
 configure_nginx
 configure_ssl
+ensure_app_key
 configure_cron
 configure_queue_worker
 create_admin_user
