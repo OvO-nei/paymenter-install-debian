@@ -143,7 +143,10 @@ configure_mariadb_repo() {
     if [ "${OS_ID}" = "debian" ]; then
         case "${OS_CODENAME}" in
             trixie|forky)
-                mariadb_version="11.4"
+                log "Using Debian's built-in MariaDB packages for ${OS_CODENAME}."
+                rm -f /etc/apt/sources.list.d/mariadb.list
+                find /etc/apt/sources.list.d -maxdepth 1 -type f -name 'mariadb.list.old_*' -delete 2>/dev/null || true
+                return
                 ;;
         esac
     fi
