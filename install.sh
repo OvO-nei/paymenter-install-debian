@@ -225,6 +225,7 @@ MYSQL
 download_paymenter() {
     log "Preparing ${PAYMENTER_DIR}..."
     local extract_dir
+    local source_dir
 
     mkdir -p "${PAYMENTER_DIR}"
     cd "${PAYMENTER_DIR}"
@@ -238,10 +239,14 @@ download_paymenter() {
 
         if [ "$(find "${extract_dir}" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" = "1" ] \
             && [ "$(find "${extract_dir}" -mindepth 1 -maxdepth 1 | wc -l | tr -d ' ')" = "1" ]; then
-            find "${extract_dir}" -mindepth 2 -maxdepth 2 -exec mv {} "${PAYMENTER_DIR}/" \;
+            source_dir="$(find "${extract_dir}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
         else
-            find "${extract_dir}" -mindepth 1 -maxdepth 1 -exec mv {} "${PAYMENTER_DIR}/" \;
+            source_dir="${extract_dir}"
         fi
+
+        # Clear leftovers from failed installs before copying the new release in place.
+        find "${PAYMENTER_DIR}" -mindepth 1 -maxdepth 1 ! -name '.env' -exec rm -rf {} +
+        cp -a "${source_dir}/." "${PAYMENTER_DIR}/"
 
         rm -rf "${extract_dir}"
         rm -f paymenter.tar.gz
