@@ -224,20 +224,35 @@ MYSQL
 
 download_paymenter() {
     log "Preparing ${PAYMENTER_DIR}..."
+    local extract_dir
+
     mkdir -p "${PAYMENTER_DIR}"
     cd "${PAYMENTER_DIR}"
 
     if [ ! -f artisan ]; then
         log "Downloading the latest Paymenter release..."
+        extract_dir="$(mktemp -d)"
         rm -f paymenter.tar.gz
         curl -fsSL -o paymenter.tar.gz https://github.com/paymenter/paymenter/releases/latest/download/paymenter.tar.gz
-        tar -xzf paymenter.tar.gz --strip-components=1
+        tar -xzf paymenter.tar.gz -C "${extract_dir}"
+
+        if [ "$(find "${extract_dir}" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" = "1" ] \
+            && [ "$(find "${extract_dir}" -mindepth 1 -maxdepth 1 | wc -l | tr -d ' ')" = "1" ]; then
+            find "${extract_dir}" -mindepth 2 -maxdepth 2 -exec mv {} "${PAYMENTER_DIR}/" \;
+        else
+            find "${extract_dir}" -mindepth 1 -maxdepth 1 -exec mv {} "${PAYMENTER_DIR}/" \;
+        fi
+
+        rm -rf "${extract_dir}"
         rm -f paymenter.tar.gz
     else
         log "Existing Paymenter installation detected, reusing current files."
     fi
 
-    [ -f .env ] || cp .env.example .env
+    if [ ! -f .env ]; then
+        [ -f .env.example ] || fail "Paymenter release is missing .env.example after extraction."
+        cp .env.example .env
+    fi
 }
 
 configure_environment() {
