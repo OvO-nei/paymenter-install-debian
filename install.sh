@@ -148,8 +148,11 @@ install_base_packages() {
         ca-certificates \
         curl \
         gnupg \
-        lsb-release \
-        software-properties-common
+        lsb-release
+
+    if [ "${OS_ID}" = "ubuntu" ]; then
+        DEBIAN_FRONTEND=noninteractive apt install -y software-properties-common
+    fi
 }
 
 install_packages() {
